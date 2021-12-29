@@ -1,14 +1,16 @@
 import { Header, Nav, Main, Footer } from "./components";
 import * as state from "./store";
+import axios from "axios";
+
 import Navigo from "navigo";
 import { capitalize } from "lodash";
-import axios from "axios";
+
 import dotenv from "dotenv";
 dotenv.config();
 
 const router = new Navigo(window.location.origin);
 
-// move router to the end and add router.hooks
+//Move router to the end AND add Router.Hooks
 
 function render(st) {
   document.querySelector("#root").innerHTML = `
@@ -18,10 +20,13 @@ function render(st) {
     ${Footer()}
   `;
   router.updatePageLinks();
+
   addEventListeners(st);
 }
 
+//  FUNCTION FOR EVENT LISTENERS
 function addEventListeners(st) {
+  // add event listeners to Nav items for navigation
   document.querySelectorAll("nav a").forEach(navLink =>
     navLink.addEventListener("click", event => {
       event.preventDefault();
@@ -30,14 +35,52 @@ function addEventListeners(st) {
   );
 
   // add menu toggle to bars icon in nav bar
-  // when you click hamburger, this function makes the menu come down
   document
     .querySelector(".fa-bars")
     .addEventListener("click", () =>
       document.querySelector("nav > ul").classList.toggle("hidden--mobile")
     );
+
+  if (st.view === "Order") {
+    document.querySelector("form").addEventListener("submit", event => {
+      event.preventDefault();
+
+      const inputList = event.target.elements;
+      console.log("Input Element List", inputList);
+
+      const toppings = [];
+      // Interate over the toppings input group elements
+      for (let input of inputList.toppings) {
+        // If the value of the checked attribute is true then add the value to the toppings array
+        if (input.checked) {
+          toppings.push(input.value);
+        }
+      }
+
+      const requestData = {
+        customer: inputList.customer.value,
+        crust: inputList.crust.value,
+        cheese: inputList.cheese.value,
+        sauce: inputList.sauce.value,
+        toppings: toppings
+      };
+      console.log("request Body", requestData);
+
+      axios
+        .post(`${process.env.PIZZA_PLACE_API_URL}`, requestData)
+        .then(response => {
+          // Push the new pizza onto the Pizza state pizzas attribute, so it can be displayed in the pizza list
+          state.Pizza.pizzas.push(response.data);
+          router.navigate("/Pizza");
+        })
+        .catch(error => {
+          console.log("It puked", error);
+        });
+    });
+  }
 }
 
+//  ADD ROUTER HOOKS HERE ...
 router.hooks({
   before: (done, params) => {
     const page =
@@ -75,32 +118,10 @@ router.hooks({
   }
 });
 
-// router at bottom
+//ADD ROUTER HERE ...
 router
   .on({
     "/": () => render(state.Home),
-    ":page": params => {
-      let page = capitalize(params.page);
-      render(state[page]);
-    }
+    ":page": params => render(state[capitalize(params.page)])
   })
   .resolve();
-
-//   Order matters in the root index.js file. Here's a guide:
-// Import statements
-// Import statements should always be at the top of your index.js file. These tell the code page what files and packages will be used. Without them being labeled at the top of the file, the code page will not know how to use all of this data.
-
-// Declaring router
-// Router is used to map all of the code logic to the location. Without this line of code your project will not be able to appropriately load the necessary data.
-
-// Render function
-// The render function tells your project to compile all of the files inside the components folder. In addition, the router function is called inside this function block to update the page links. The final piece inside this function block is a function for the Navigation Menu.
-
-// Event Handler function
-// This function should identify an event then give instructions. This will use the render function to upload the necessary page in the navigation menu
-
-// Router.hooks
-// This function holds instructions for updating information from an API. An if statement is given for a certain view (from the views folder) followed by an axios.get statement. This is then followed by an axios.then statement in which directions are given about which pieces of this data to collect.
-
-// Router.on
-// This is the function that executes the axios statements. This will only run correctly if given instructions on what to execute. It is for this reason that this function must follow the instructions laid out in the router.hooks function.
